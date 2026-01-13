@@ -1,5 +1,6 @@
 services:
   cobol-compiler:
+    image: procob-compiler-kit:latest
     build: .
     # Enforce AMD64 architecture for Oracle binary compatibility
     platform: linux/amd64

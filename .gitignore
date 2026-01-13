@@ -18,6 +18,3 @@ workspace/bin/*
 *.int
 *.i
 *.log
-
-# Downloaded Source
-oracle-downloads/*.zip

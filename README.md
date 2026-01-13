@@ -14,7 +14,7 @@ A turnkey environment for compiling and running GnuCOBOL applications with full 
 The repository comes pre-packaged with necessary Oracle Instant Client binaries. Simply build the image:
 
 ```bash
-docker-compose build
+docker compose build
 ```
 
 ## 📂 Workflow Directory

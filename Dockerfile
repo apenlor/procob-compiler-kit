@@ -1,5 +1,5 @@
-# Base Image: Ubuntu 24.04 LTS (Noble Numbat)
-FROM ubuntu:24.04
+# Base Image: Debian Stable Slim (Bookworm)
+FROM debian:stable-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -7,18 +7,35 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - libaio1t64: Asynchronous I/O library (Oracle requirement)
 # - build-essential: Necessary for compiling (gcc, make, etc.)
 # - unzip: To unzip Oracle files
-# - gnucobol: The COBOL compiler
+# - GnuCOBOL Build Deps: libgmp-dev, libdb-dev, libncurses-dev, libxml2-dev, libjson-c-dev
 RUN apt-get update && apt-get install -y \
     libaio1t64 \
     build-essential \
     unzip \
-    gnucobol \
+    libgmp-dev \
+    libdb-dev \
+    libncurses-dev \
+    libxml2-dev \
+    libjson-c-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# --- GnuCOBOL 3.2 Installation (Source) ---
+WORKDIR /tmp/gnucobol
+COPY resources/gnucobol/gnucobol-3.2.tar.xz .
+
+RUN tar -xf gnucobol-3.2.tar.xz && \
+    cd gnucobol-3.2 && \
+    ./configure && \
+    make && \
+    make install && \
+    ldconfig && \
+    cd /tmp && \
+    rm -rf /tmp/gnucobol
 
 WORKDIR /opt/oracle
 
 # Transfer Oracle Instant Client archives
-COPY oracle-downloads/*.zip .
+COPY resources/oracle/*.zip .
 
 # 1. Unzip (they merge into a single folder instantclient_XX_XX)
 # 2. Delete the zips
