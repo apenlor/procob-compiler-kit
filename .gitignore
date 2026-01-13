@@ -1,0 +1,23 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+*.swp
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Build Artifacts (Binaries)
+workspace/bin/*
+!workspace/bin/.gitkeep
+*.so
+*.o
+
+# Oracle Precompiler / GnuCOBOL Intermediate Files
+*.lis
+*.int
+*.i
+*.log
+
+# Downloaded Source
+oracle-downloads/*.zip

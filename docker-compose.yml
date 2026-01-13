@@ -1,0 +1,14 @@
+services:
+  cobol-compiler:
+    build: .
+    # Enforce AMD64 architecture for Oracle binary compatibility
+    platform: linux/amd64
+    volumes:
+      # Mount local workspace to container application directory
+      # Create this folder in your project if you don't want to lose your code when closing docker
+      - ./workspace:/app
+    environment:
+      - ORACLE_HOME=/opt/oracle/instantclient
+      - LD_LIBRARY_PATH=/opt/oracle/instantclient
+    tty: true
+    stdin_open: true
