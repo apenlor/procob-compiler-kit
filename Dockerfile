@@ -46,7 +46,8 @@ RUN unzip -o '*.zip' && \
 
 # Version-agnostic environment configuration
 ENV ORACLE_HOME=/opt/oracle/instantclient
-ENV LD_LIBRARY_PATH=$ORACLE_HOME:$LD_LIBRARY_PATH
+# Set library path
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
 ENV PATH=$ORACLE_HOME:$ORACLE_HOME/sdk:$PATH
 
 WORKDIR /app

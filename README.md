@@ -8,13 +8,15 @@ A turnkey environment for compiling and running GnuCOBOL applications with full 
 
 - Docker
 - Docker Compose
+- `make` (Optional, for simplified commands)
 
 ### 2. Setup
 
 The repository comes pre-packaged with necessary Oracle Instant Client binaries. Simply build the image:
 
 ```bash
-docker compose build
+make build
+# Or without make: docker-compose build
 ```
 
 ## 📂 Workflow Directory
@@ -35,7 +37,8 @@ Work primarily takes place in the `workspace/` directory, which is mounted into 
 To compile **all** source files located in `workspace/src/`:
 
 ```bash
-docker-compose run --rm cobol-compiler ./compile.sh
+make compile
+# Or: docker-compose run --rm cobol-compiler ./compile.sh
 ```
 
 **What happens?**
@@ -50,8 +53,8 @@ docker-compose run --rm cobol-compiler ./compile.sh
 To execute a compiled module (e.g., `helloworld.so`):
 
 ```bash
-# Syntax: ./execute.sh [MODULE_NAME]
-docker-compose run --rm cobol-compiler ./execute.sh helloworld
+make run mod=helloworld
+# Or: docker-compose run --rm cobol-compiler ./execute.sh helloworld
 ```
 
 _Note: Do not add the extension `.so` in the command, just the module name._
@@ -61,7 +64,8 @@ _Note: Do not add the extension `.so` in the command, just the module name._
 For manual debugging, running specific commands, or checking environment variables:
 
 ```bash
-docker-compose run --rm cobol-compiler bash
+make shell
+# Or: docker-compose run --rm cobol-compiler bash
 ```
 
 ## 📏 Conventions

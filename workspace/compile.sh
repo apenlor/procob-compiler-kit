@@ -1,72 +1,83 @@
 #!/bin/bash
 
+# --- Colors & formatting ---
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+BLUE="\033[0;34m"
+YELLOW="\033[0;33m"
+RED="\033[0;31m"
+RESET="\033[0m"
+
+log_info() { echo -e "${BLUE}🔵 [INFO]${RESET}  $1"; }
+log_step() { echo -e "${YELLOW}🛠️  [STEP]${RESET}  $1"; }
+log_success() { echo -e "${GREEN}✅ [SUCCESS]${RESET} $1"; }
+log_error() { echo -e "${RED}❌ [ERROR]${RESET}   $1"; }
+
 # Ensure binary output directory exists
 mkdir -p bin
 
 # Oracle Instant Client configuration
-# -L: Library search path
-# -l: Link against 'clntsh' (Oracle Client Shared Library)
 ORACLE_FLAGS="-L$ORACLE_HOME -lclntsh"
 COBC_FLAGS="-m -fbinary-byteorder=native -fbinary-size=2-4-8"
 
-echo "--- Starting build process ---"
+log_info "Starting build process..."
 
 # Change to source directory
-cd src || exit 1
+cd src || { log_error "Source directory 'src' not found"; exit 1; }
 
 # List to track generated .cbl files for cleanup
 generated_files=""
 
 # 1. Oracle Pro*COBOL Precompilation
-# Process files sequentially; 'procob' lacks robust wildcard support
 shopt -s nullglob
-for f in *.pco; do
-    filename=$(basename -- "$f")
-    base="${filename%.*}"
-    generated_cbl="${base}.cbl"
+pco_files=(*.pco)
 
-    echo "Precompiling Oracle COBOL: $f -> $generated_cbl"
+if [ ${#pco_files[@]} -gt 0 ]; then
+    log_step "Precompiling Oracle Pro*COBOL sources..."
+    for f in "${pco_files[@]}"; do
+        filename=$(basename -- "$f")
+        base="${filename%.*}"
+        generated_cbl="${base}.cbl"
 
-    # iname=input, oname=output
-    procob iname="$f" oname="$generated_cbl"
+        echo -e "    ➜ ${BOLD}$f${RESET} -> $generated_cbl"
 
-    if [ $? -eq 0 ]; then
-        generated_files="$generated_files $generated_cbl"
-    else
-        echo "❌ Error precompiling $f"
-        exit 1
-    fi
-done
+        # iname=input, oname=output
+        procob iname="$f" oname="$generated_cbl" > /dev/null
+
+        if [ $? -eq 0 ]; then
+            generated_files="$generated_files $generated_cbl"
+        else
+            log_error "Precompilation failed for $f"
+            exit 1
+        fi
+    done
+fi
 
 # 2. GnuCOBOL Compilation (Batch)
-# This picks up both native .cbl files and the ones we just generated
-# We use an array to capture the expansion of *.cbl safely
 cbl_files=(*.cbl)
 
 if [ ${#cbl_files[@]} -gt 0 ]; then
-    echo "Compiling COBOL sources: ${cbl_files[*]}"
+    log_step "Compiling GnuCOBOL sources..."
+    echo -e "    ➜ Sources: ${BOLD}${cbl_files[*]}${RESET}"
     
     # Run cobc in batch mode
     cobc $COBC_FLAGS $ORACLE_FLAGS "${cbl_files[@]}"
 
     if [ $? -eq 0 ]; then
-        echo "✅ Compilation successful"
-        
         # Move generated modules (.so) to bin directory
-        # Using -f to overwrite existing binaries
         mv -f *.so ../bin/ 2>/dev/null
         
         # Remove intermediate precompiled sources
         if [ -n "$generated_files" ]; then
-            echo "Cleaning up generated sources..."
             rm $generated_files
         fi
+        
+        log_success "Build completed. Artifacts moved to ${BOLD}workspace/bin${RESET}"
     else
-        echo "❌ Compilation failed"
+        log_error "Compilation failed"
         exit 1
     fi
 else
-    echo "⚠️ No .cbl files found to compile"
+    log_info "No .cbl files found to compile"
 fi
 
-echo "--- Build complete ---"
