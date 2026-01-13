@@ -26,7 +26,7 @@ log_info "Starting build process..."
 cd src || { log_error "Source directory 'src' not found"; exit 1; }
 
 # List to track generated .cbl files for cleanup
-generated_files=""
+generated_files=()
 
 # 1. Oracle Pro*COBOL Precompilation
 shopt -s nullglob
@@ -45,7 +45,7 @@ if [ ${#pco_files[@]} -gt 0 ]; then
         procob iname="$f" oname="$generated_cbl" > /dev/null
 
         if [ $? -eq 0 ]; then
-            generated_files="$generated_files $generated_cbl"
+            generated_files+=("$generated_cbl")
         else
             log_error "Precompilation failed for $f"
             exit 1
@@ -65,11 +65,11 @@ if [ ${#cbl_files[@]} -gt 0 ]; then
 
     if [ $? -eq 0 ]; then
         # Move generated modules (.so) to bin directory
-        mv -f *.so ../bin/ 2>/dev/null
+        mv -f -- *.so ../bin/ 2>/dev/null
         
         # Remove intermediate precompiled sources
-        if [ -n "$generated_files" ]; then
-            rm $generated_files
+        if [ ${#generated_files[@]} -gt 0 ]; then
+            rm -- "${generated_files[@]}"
         fi
         
         log_success "Build completed. Artifacts moved to ${BOLD}workspace/bin${RESET}"

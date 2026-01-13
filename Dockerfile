@@ -41,8 +41,8 @@ COPY resources/oracle/*.zip .
 # 2. Delete the zips
 # 3. Standardize directory name to 'instantclient'
 RUN unzip -o '*.zip' && \
-    rm *.zip && \
-    mv instantclient* instantclient
+    rm -- *.zip && \
+    mv -- instantclient* instantclient
 
 # Version-agnostic environment configuration
 ENV ORACLE_HOME=/opt/oracle/instantclient

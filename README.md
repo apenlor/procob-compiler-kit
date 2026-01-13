@@ -1,3 +1,5 @@
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/4cceb8c0d38f487aaf230cdda4b3d787)](https://app.codacy.com/gh/apenlor/procob-compiler-kit/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+
 # Dockerized COBOL & Oracle Compiler
 
 A turnkey environment for compiling and running GnuCOBOL applications with full Oracle Pro\*COBOL support. This utility provides a consistent toolchain wrapped in Docker, eliminating local setup headaches for `cobc` and `procob`.
