@@ -8,6 +8,7 @@ import (
 
 	"procob-compiler-kit/tools/test-runner/pkg/assert"
 	"procob-compiler-kit/tools/test-runner/pkg/executor"
+	"procob-compiler-kit/tools/test-runner/pkg/fsops"
 )
 
 const (
@@ -34,12 +35,25 @@ func main() {
 
 	// 2. Clean workspace/input and workspace/output
 	fmt.Println("--> Cleaning workspace...")
-	cleanDirectory(workspaceInput)
-	cleanDirectory(workspaceOutput)
+	if err := fsops.CleanDir(workspaceInput); err != nil {
+		fmt.Printf("Error cleaning directory %s: %v\n", workspaceInput, err)
+		os.Exit(1)
+	}
+	if err := fsops.CleanDir(workspaceOutput); err != nil {
+		fmt.Printf("Error cleaning directory %s: %v\n", workspaceOutput, err)
+		os.Exit(1)
+	}
 
 	// 3. Inject: Copy tests/<mod>/input/* to workspace/input/
 	fmt.Printf("--> Injecting test data for module: %s\n", *mod)
-	copyDirectoryContents(testInput, workspaceInput)
+	if err := fsops.CopyDir(testInput, workspaceInput); err != nil {
+		// It's okay if a test has no input files
+		if !os.IsNotExist(err) {
+			fmt.Printf("Error copying test data: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("No input directory for module, skipping copy.")
+	}
 
 	// Define project root relative to the main.go file
 	projectRoot := "../.."
@@ -69,47 +83,4 @@ func main() {
 	// 7. Report: Exit 0 on success
 	fmt.Println("--> Test run successful!")
 	os.Exit(0)
-}
-
-func cleanDirectory(dir string) {
-	err := os.RemoveAll(dir)
-	if err != nil {
-		fmt.Printf("Error cleaning directory %s: %v\n", dir, err)
-		os.Exit(1)
-	}
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		fmt.Printf("Error recreating directory %s: %v\n", dir, err)
-		os.Exit(1)
-	}
-}
-
-func copyDirectoryContents(src, dest string) {
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		// It's okay if a test has no input files
-		if os.IsNotExist(err) {
-			fmt.Printf("No input directory for module, skipping copy.\n")
-			return
-		}
-		fmt.Printf("Error reading source directory %s: %v\n", src, err)
-		os.Exit(1)
-	}
-
-	for _, entry := range entries {
-		srcPath := filepath.Join(src, entry.Name())
-		destPath := filepath.Join(dest, entry.Name())
-
-		fileData, err := os.ReadFile(srcPath)
-		if err != nil {
-			fmt.Printf("Error reading source file %s: %v\n", srcPath, err)
-			os.Exit(1)
-		}
-
-		err = os.WriteFile(destPath, fileData, 0644)
-		if err != nil {
-			fmt.Printf("Error writing destination file %s: %v\n", destPath, err)
-			os.Exit(1)
-		}
-	}
 }

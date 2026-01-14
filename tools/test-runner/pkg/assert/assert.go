@@ -61,7 +61,7 @@ func listFiles(root string) (map[string]string, error) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
+		if d.IsDir() || d.Name() == ".gitkeep" {
 			return nil
 		}
 		rel, err := filepath.Rel(root, path)

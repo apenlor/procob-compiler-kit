@@ -19,6 +19,9 @@ func CleanDir(path string) error {
 	}
 
 	for _, entry := range entries {
+		if entry.Name() == ".gitkeep" {
+			continue
+		}
 		fullPath := filepath.Join(path, entry.Name())
 		if err := os.RemoveAll(fullPath); err != nil {
 			return err
