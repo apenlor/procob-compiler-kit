@@ -42,7 +42,7 @@ log_info "Execution finished with exit code ${BOLD}$EXIT_CODE${RESET}"
 # --- Harvest Outputs ---
 # 3. Move all non-binary files (.so) from the sandbox to the output directory.
 if [ -d "/app/output" ]; then
-    find . -maxdepth 1 -type f ! -name "*.so" -exec mv -t /app/output/ {} +
+    find . -maxdepth 1 -type f ! -name "*.so" ! -name ".gitkeep" -exec mv -t /app/output/ {} +
     log_info "Moved generated files to ${BOLD}/app/output${RESET}"
 fi
 
