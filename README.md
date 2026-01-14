@@ -40,7 +40,7 @@ To compile **all** source files located in `workspace/src/`:
 
 ```bash
 make compile
-# Or: docker-compose run --rm cobol-compiler ./compile.sh
+# Or: docker-compose run --rm compiler ./compile.sh
 ```
 
 **What happens?**
@@ -56,7 +56,7 @@ To execute a compiled module (e.g., `helloworld.so`):
 
 ```bash
 make run mod=helloworld
-# Or: docker-compose run --rm cobol-compiler ./execute.sh helloworld
+# Or: docker-compose run --rm runner ./execute.sh helloworld
 ```
 
 _Note: Do not add the extension `.so` in the command, just the module name._
@@ -67,7 +67,7 @@ For manual debugging, running specific commands, or checking environment variabl
 
 ```bash
 make shell
-# Or: docker-compose run --rm cobol-compiler bash
+# Or: docker-compose run --rm runner bash
 ```
 
 ## 📏 Conventions
