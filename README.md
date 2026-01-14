@@ -59,6 +59,23 @@ make run mod=helloworld
 
 _Note: Do not add the extension `.so` in the command, just the module name._
 
+### Testing Modules
+
+This project uses a "Golden Master" testing approach. Test cases are defined in the `tests/` directory, where each subdirectory contains `input` and `expected` output files.
+
+To run the test case for a specific module:
+
+```bash
+make test mod=bcuota
+```
+
+**What happens?**
+1. The Go test runner compiles the latest code.
+2. It copies the test's input files into the workspace.
+3. It runs the module inside the Docker container.
+4. It compares the generated output against the "expected" golden master files.
+5. The command will exit with a success or failure code.
+
 ### Cleaning Up
 
 To remove all compiled binaries and generated output files:
