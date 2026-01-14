@@ -21,7 +21,8 @@ run:
 		echo "Error: Please specify a module name. Example: make run mod=helloworld"; \
 		exit 1; \
 	fi
-	@docker-compose run --rm -T runner ./execute.sh $(mod) 2>&1 | grep -v -e "No services to build" -e "Creating" -e "Created"; exit $${PIPESTATUS[0]}
+	@echo "⏳ Waiting for Oracle Database to be ready..."
+	@docker-compose run --rm -T runner ./execute.sh $(mod) 2>&1 | grep -v -E "Container|Creating|Created|Attaching|No services|time="; exit $${PIPESTATUS[0]}
 
 shell:
 	@docker-compose run --rm runner bash

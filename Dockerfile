@@ -1,17 +1,42 @@
-# Base Image: Debian Stable Slim (Bookworm)
-FROM debian:stable-slim
-
+# ==============================================================================
+# BASE STAGE
+# Contains common dependencies for both compiler and runner
+# ==============================================================================
+FROM debian:stable-slim AS base
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
-# - libaio1t64: Asynchronous I/O library (Oracle requirement)
-# - build-essential: Necessary for compiling (gcc, make, etc.)
-# - unzip: To unzip Oracle files
-# - GnuCOBOL Build Deps: libgmp-dev, libdb-dev, libncurses-dev, libxml2-dev, libjson-c-dev
+# Install minimal runtime dependencies required by Oracle and GnuCOBOL
 RUN apt-get update && apt-get install -y \
     libaio1t64 \
-    build-essential \
+    libgmp10 \
+    libdb5.3 \
+    libncursesw6 \
+    libxml2 \
+    libjson-c5 \
     unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Oracle Instant Client Basic (Runtime)
+WORKDIR /opt/oracle
+COPY resources/oracle/instantclient-basiclite-linuxx64.zip .
+RUN unzip -o '*.zip' && \
+    rm -- *.zip && \
+    mv -- instantclient* instantclient
+
+# Configure runtime environment
+ENV ORACLE_HOME=/opt/oracle/instantclient
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+ENV PATH=$ORACLE_HOME:$PATH
+
+# ==============================================================================
+# BUILDER STAGE
+# Builds GnuCOBOL from source, creating a full development environment
+# ==============================================================================
+FROM base AS builder
+
+# Install build-time dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
     libgmp-dev \
     libdb-dev \
     libncurses-dev \
@@ -19,37 +44,47 @@ RUN apt-get update && apt-get install -y \
     libjson-c-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# --- GnuCOBOL 3.2 Installation (Source) ---
+# Compile GnuCOBOL from source
 WORKDIR /tmp/gnucobol
 COPY resources/gnucobol/gnucobol-3.2.tar.xz .
-
+# Note: CFLAGS="-O0" is added to prevent GCC segfaults when running under Q-EMU emulation (Apple Silicon)
 RUN tar -xf gnucobol-3.2.tar.xz && \
     cd gnucobol-3.2 && \
-    ./configure && \
+    ./configure CFLAGS="-O0" && \
     make && \
     make install && \
     ldconfig && \
     cd /tmp && \
     rm -rf /tmp/gnucobol
 
+# ==============================================================================
+# COMPILER STAGE (Final)
+# The final image for the 'compiler' service. Includes all build tools.
+# ==============================================================================
+FROM builder AS compiler
+
+# Install Oracle SDK and Precompiler development tools
 WORKDIR /opt/oracle
+COPY resources/oracle/instantclient-sdk-linuxx64.zip .
+COPY resources/oracle/instantclient-precomp-linux.x64-23.26.0.0.0.zip .
+RUN unzip -o '*.zip' && rm -- *.zip
 
-# Transfer Oracle Instant Client archives
-COPY resources/oracle/*.zip .
-
-# 1. Unzip (they merge into a single folder instantclient_XX_XX)
-# 2. Delete the zips
-# 3. Standardize directory name to 'instantclient'
-RUN unzip -o '*.zip' && \
-    rm -- *.zip && \
-    mv -- instantclient* instantclient
-
-# Version-agnostic environment configuration
-ENV ORACLE_HOME=/opt/oracle/instantclient
-# Set library path
-ENV LD_LIBRARY_PATH=$ORACLE_HOME
-ENV PATH=$ORACLE_HOME:$ORACLE_HOME/sdk:$PATH
-
+# Set final WORKDIR and CMD
 WORKDIR /app
+CMD ["/bin/bash"]
 
+
+# ==============================================================================
+# RUNNER STAGE (Final)
+# The final, minimal image for the 'runner' service.
+# ==============================================================================
+FROM base AS runner
+
+# Copy GnuCOBOL runtime binaries and libraries from the builder stage
+COPY --from=builder /usr/local/lib/libcob* /usr/local/lib/
+COPY --from=builder /usr/local/bin/cobcrun /usr/local/bin/
+RUN ldconfig
+
+# Set final WORKDIR and CMD
+WORKDIR /app
 CMD ["/bin/bash"]

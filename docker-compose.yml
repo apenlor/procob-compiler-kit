@@ -1,7 +1,9 @@
 services:
   compiler:
-    image: procob-compiler-kit:latest
-    build: .
+    image: procob-compiler:latest
+    build:
+      context: .
+      target: compiler
     # Enforce AMD64 architecture for Oracle binary compatibility
     platform: linux/amd64
     volumes:
@@ -16,8 +18,10 @@ services:
     stdin_open: true
 
   runner:
-    image: procob-compiler-kit:latest
-    build: .
+    image: procob-runner:latest
+    build:
+      context: .
+      target: runner
     platform: linux/amd64
     volumes:
       - ./workspace:/app
