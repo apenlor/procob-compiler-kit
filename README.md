@@ -25,12 +25,10 @@ make build
 
 Work primarily takes place in the `workspace/` directory, which is mounted into the container.
 
-- **`workspace/src/`** (Input): Place your source code here.
-  - Use `.pco` for COBOL with embedded SQL (`EXEC SQL`).
-  - Use `.cbl` for standard COBOL.
-- **`workspace/bin/`** (Output): Compiled executable modules (`.so`) are generated here.
-- **`workspace/compile.sh`**: The build script (runs automatically inside the container).
-- **`workspace/execute.sh`**: The runner script.
+- **`workspace/src/`**: Place your source code here (`.cbl`, `.pco`).
+- **`workspace/input/`**: Place your runtime data files here (e.g., [`bccuota-input`](workspace/input/bcuota-input)).
+- **`workspace/output/`**: Generated reports, logs, and output files appear here after a run.
+- **`workspace/bin/`**: Compiled executable modules (`.so`) are generated here. This folder also acts as a temporary sandbox during execution.
 
 ## 🛠️ Usage
 
@@ -61,13 +59,20 @@ make run mod=helloworld
 
 _Note: Do not add the extension `.so` in the command, just the module name._
 
-### Interactive Shell
+### Cleaning Up
 
-For manual debugging, running specific commands, or checking environment variables:
+To remove all compiled binaries and generated output files:
 
 ```bash
-make shell
-# Or: docker-compose run --rm runner bash
+make clean
+```
+
+### Resetting the Database
+
+If the database fails to start or gets corrupted, you can completely reset it. **This will delete all data.**
+
+```bash
+make db-clean
 ```
 
 ## 📏 Conventions

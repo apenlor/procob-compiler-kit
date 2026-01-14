@@ -35,4 +35,5 @@ db-clean:
 
 clean:
 	@rm -f workspace/bin/*.so
-	@echo "Cleaned workspace/bin/"
+	@rm -f workspace/output/*
+	@echo "Cleaned workspace/bin/ and workspace/output/"

@@ -9,13 +9,13 @@
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
-           SELECT LOAN ASSIGN TO "entrada"
+           SELECT LOAN ASSIGN TO "bcuota-input"
            ORGANIZATION IS LINE SEQUENTIAL
            ACCESS IS SEQUENTIAL.
 
-           SELECT CUOTA ASSIGN TO "salida"
+           SELECT CUOTA ASSIGN TO "bcuota-output"
            ORGANIZATION IS LINE SEQUENTIAL
-           ACCESS IS SEQUENTIAL.    
+           ACCESS IS SEQUENTIAL.
 
        DATA DIVISION.
        FILE SECTION.
@@ -51,16 +51,16 @@
                05 WS-CMONTH PIC X(2).
                 05 FILLER VALUE "-".
                05 WS-CYEAR PIC X(4).
-               
+
            01 WS-EOF PIC X(1) VALUE "N".
-           
+
            01 WS-DATE-LOGMSG.
-               05 WS-MSG PIC X(14) VALUE "CURRENT DATE: ".  
+               05 WS-MSG PIC X(14) VALUE "CURRENT DATE: ".
                05 WS-DATELOG PIC X(10).
            01 WS-END-LOGMSG.
-               05 WS-MSG PIC X(25) VALUE "TOTAL RECORDS PROCESSED: ".  
+               05 WS-MSG PIC X(25) VALUE "TOTAL RECORDS PROCESSED: ".
                05 WS-COUNTER PIC 9(9).
-      ****************************************************************     
+      ****************************************************************
            01 LOAN-PARAMS.
                05 INPUT-MSG.
                    10 PRIN-AMT      PIC S9(7)      USAGE IS DISPLAY.
@@ -68,8 +68,8 @@
                    10 TIMEYR        PIC S9(2)      USAGE IS DISPLAY.
                05 OUTPUT-MSG.
                    10 PAYMENT       PIC S9(7)V9(2) USAGE IS DISPLAY.
-                   10 ERROR-MSG     PIC X(20).                  
-                          
+                   10 ERROR-MSG     PIC X(20).
+
        PROCEDURE DIVISION.
 
            PERFORM 100-INIT.
@@ -79,17 +79,17 @@
                AT END MOVE 'Y' TO WS-EOF
                NOT AT END
                    IF WS-DATE = WS-CDATE
-                      PERFORM 200-PROCESS    
+                      PERFORM 200-PROCESS
                       WRITE CUOTA-FILE
                       END-WRITE
-                   END-IF   
+                   END-IF
                END-READ
            END-PERFORM.
 
-           PERFORM 300-WRAPUP.   
+           PERFORM 300-WRAPUP.
 
-       100-INIT.   
-           
+       100-INIT.
+
            OPEN INPUT LOAN.
            OPEN OUTPUT CUOTA.
 
@@ -100,10 +100,10 @@
            MOVE WS-TMONTH TO WS-CMONTH.
            MOVE WS-TDAY TO WS-CDAY.
            MOVE WS-CDATE TO WS-DATELOG
-           DISPLAY WS-DATE-LOGMSG. 
+           DISPLAY WS-DATE-LOGMSG.
 
-       200-PROCESS.    
-        
+       200-PROCESS.
+
            MOVE WS-AMT TO PRIN-AMT.
            MOVE WS-INT TO INT-RATE.
            MOVE WS-YEAR TO TIMEYR.
@@ -123,14 +123,14 @@
 
            CLOSE LOAN.
            CLOSE CUOTA.
-           DISPLAY WS-END-LOGMSG.    
+           DISPLAY WS-END-LOGMSG.
 
            MOVE 0 TO RETURN-CODE.
-       
+
            GOBACK.
       ******************************************************************
 
 
-           
+
 
 
