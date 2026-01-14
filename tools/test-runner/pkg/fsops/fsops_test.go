@@ -158,4 +158,45 @@ func TestCleanDir_Safety(t *testing.T) {
 	// We DO NOT execute this because it is too dangerous to test "live"
 	// against an implementation that might lack the check.
 	// We rely on the implementation of "." and "" checks to cover the logic pattern.
+
+	// Case 4: Parent (..)
+	func() {
+		// Create safe parent dir
+		parentDir, err := os.MkdirTemp("", "fsops_safety_parent")
+		if err != nil {
+			t.Fatalf("Failed to create parent dir: %v", err)
+		}
+		defer os.RemoveAll(parentDir)
+
+		// Create a file in parent to be potentially deleted
+		if err := os.WriteFile(filepath.Join(parentDir, "keep_me.txt"), []byte("data"), 0644); err != nil {
+			t.Fatalf("Failed to create file in parent: %v", err)
+		}
+
+		// Create subdir
+		subDir := filepath.Join(parentDir, "subdir")
+		if err := os.Mkdir(subDir, 0755); err != nil {
+			t.Fatalf("Failed to create subdir: %v", err)
+		}
+
+		// Save current wd
+		wd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Failed to get wd: %v", err)
+		}
+		defer func() {
+			_ = os.Chdir(wd)
+		}()
+
+		// Chdir to subdir
+		if err := os.Chdir(subDir); err != nil {
+			t.Fatalf("Failed to chdir to subdir: %v", err)
+		}
+
+		// Run CleanDir("..")
+		// Should fail
+		if err := CleanDir(".."); err == nil {
+			t.Error("CleanDir(\"..\") should return error, got nil")
+		}
+	}()
 }

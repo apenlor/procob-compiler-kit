@@ -9,8 +9,8 @@ import (
 
 // CleanDir removes all contents of the directory at path, but leaves the directory itself.
 func CleanDir(path string) error {
-	if path == "" || path == "." || path == "/" {
-		return errors.New("path cannot be root, empty, or dot")
+	if path == "" || path == "." || path == ".." || path == "/" {
+		return errors.New("path cannot be root, empty, dot, or dot-dot")
 	}
 
 	entries, err := os.ReadDir(path)
