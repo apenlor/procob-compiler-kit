@@ -26,10 +26,16 @@ if [ -d "/app/output" ]; then
 fi
 
 # 2. Copy fresh input files from /app/input if the directory exists.
+input_files=()
 if [ -d "/app/input" ]; then
     # Use `cp -f` to always overwrite with a fresh copy from the input directory,
     # ensuring that each run is idempotent and uses clean data.
-    cp -f /app/input/* . 2>/dev/null || true
+    for f in /app/input/*; do
+        if [ -f "$f" ]; then
+            cp -f "$f" .
+            input_files+=("$(basename "$f")")
+        fi
+    done
 fi
 
 # --- Execute ---
@@ -38,9 +44,14 @@ cobcrun "$@"
 EXIT_CODE=$?
 log_info "Execution finished with exit code ${BOLD}$EXIT_CODE${RESET}"
 
+# --- Cleanup Inputs ---
+# 4. Remove the original input files from the sandbox before harvesting.
+if [ ${#input_files[@]} -gt 0 ]; then
+    rm -f -- "${input_files[@]}"
+fi
 
 # --- Harvest Outputs ---
-# 3. Move all non-binary files (.so) from the sandbox to the output directory.
+# 5. Move all non-binary files (.so) from the sandbox to the output directory.
 if [ -d "/app/output" ]; then
     find . -maxdepth 1 -type f ! -name "*.so" ! -name ".gitkeep" -exec mv -t /app/output/ {} +
     log_info "Moved generated files to ${BOLD}/app/output${RESET}"

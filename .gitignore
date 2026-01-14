@@ -13,6 +13,8 @@ workspace/bin/*
 !workspace/bin/.gitkeep
 workspace/output/*
 !workspace/output/.gitkeep
+workspace/input/*
+!workspace/input/.gitkeep
 *.so
 *.o
 

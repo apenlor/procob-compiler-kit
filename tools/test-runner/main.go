@@ -25,7 +25,7 @@ func main() {
 	// 1. Validate mod arg
 	if *mod == "" {
 		fmt.Println("Error: --mod flag is required")
-		os.Exit(1)
+		return
 	}
 
 	// Define paths
@@ -34,15 +34,22 @@ func main() {
 	testInput := filepath.Join(TestRoot, *mod, "input")
 	testExpected := filepath.Join(TestRoot, *mod, "expected")
 
+	// Defer cleanup to ensure it runs at the end
+	defer func() {
+		fmt.Println("--> Cleaning up workspace...")
+		fsops.CleanDir(workspaceInput)
+		fsops.CleanDir(workspaceOutput)
+	}()
+
 	// 2. Clean workspace/input and workspace/output
 	fmt.Println("--> Cleaning workspace...")
 	if err := fsops.CleanDir(workspaceInput); err != nil {
 		fmt.Printf("Error cleaning directory %s: %v\n", workspaceInput, err)
-		os.Exit(1)
+		return
 	}
 	if err := fsops.CleanDir(workspaceOutput); err != nil {
 		fmt.Printf("Error cleaning directory %s: %v\n", workspaceOutput, err)
-		os.Exit(1)
+		return
 	}
 
 	// 3. Inject: Copy tests/<mod>/input/* to workspace/input/
@@ -51,7 +58,7 @@ func main() {
 		// It's okay if a test has no input files
 		if !os.IsNotExist(err) {
 			fmt.Printf("Error copying test data: %v\n", err)
-			os.Exit(1)
+			return
 		}
 		fmt.Println("No input directory for module, skipping copy.")
 	}
@@ -63,7 +70,7 @@ func main() {
 	fmt.Println("--> Compiling sources...")
 	if out, err := executor.RunCommand(projectRoot, "make", "compile"); err != nil {
 		fmt.Printf("Error during compilation:\n%s\n", out)
-		os.Exit(1)
+		return
 	}
 
 	// 5. Run: Run make run mod=<mod>
@@ -71,7 +78,7 @@ func main() {
 	runArg := fmt.Sprintf("mod=%s", *mod)
 	if out, err := executor.RunCommand(projectRoot, "make", "run", runArg); err != nil {
 		fmt.Printf("Error during test execution:\n%s\n", out)
-		os.Exit(1)
+		return
 	}
 
 	// 6. Verify or Generate Golden Master
@@ -83,17 +90,17 @@ func main() {
 		if _, err := os.Stat(testInput); os.IsNotExist(err) {
 			fmt.Printf("Error: Input directory not found at %s\n", testInput)
 			fmt.Println("Please create it and add test input files before generating a golden master.")
-			os.Exit(1)
+			return // Exit without success
 		}
 
 		// Clean the expected directory and copy the new output
 		if err := fsops.CleanDir(testExpected); err != nil {
 			fmt.Printf("Error cleaning expected directory: %v\n", err)
-			os.Exit(1)
+			return // Exit without success
 		}
 		if err := fsops.CopyDir(workspaceOutput, testExpected); err != nil {
 			fmt.Printf("Error copying golden master files: %v\n", err)
-			os.Exit(1)
+			return // Exit without success
 		}
 		fmt.Printf("--> Golden master for module '%s' generated successfully!\n", *mod)
 	} else {
@@ -101,10 +108,8 @@ func main() {
 		fmt.Println("--> Verifying output...")
 		if err := assert.CompareDirs(workspaceOutput, testExpected); err != nil {
 			fmt.Printf("Verification failed: %v\n", err)
-			os.Exit(1)
+			return // Exit without success
 		}
 		fmt.Println("--> Test run successful!")
 	}
-
-	os.Exit(0)
 }
