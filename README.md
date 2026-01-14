@@ -1,101 +1,146 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/4cceb8c0d38f487aaf230cdda4b3d787)](https://app.codacy.com/gh/apenlor/procob-compiler-kit/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 
-# Dockerized COBOL & Oracle Compiler
+# Dockerized COBOL & Oracle Compiler Kit
 
-A turnkey environment for compiling and running GnuCOBOL applications with full Oracle Pro\*COBOL support. This utility provides a consistent toolchain wrapped in Docker, eliminating local setup headaches for `cobc` and `procob`.
+A turnkey environment for compiling and running GnuCOBOL applications with full Oracle Pro*COBOL support, designed for a consistent and hassle-free developer workflow.
 
-## 🚀 Quick Start
+## Table of Contents
+- [Core Concepts](#core-concepts)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Commands](#commands)
+  - [Development Workflow](#development-workflow)
+  - [Testing Workflow](#testing-workflow)
+  - [Maintenance](#maintenance)
+- [Tutorial: Adding a New Program](#tutorial-adding-a-new-program)
 
-### 1. Prerequisites
+## Core Concepts
+
+This project provides a "black box" compiler and runtime environment using Docker. It isolates the complexities of the Oracle and COBOL toolchains, allowing you to focus solely on writing and testing your code.
+
+The system is composed of three services managed by Docker Compose:
+
+```
++----------+       +---------+       +------------+
+| compiler | ----> | runner  | ----> | oracle-db  |
++----------+       +---------+       +------------+
+(No DB Link)    (Executes Code)     (Database)
+```
+
+- **`compiler`**: A lightweight container that compiles your source code without needing a database connection.
+- **`runner`**: An identical container that executes your compiled code and has a direct link to the database.
+- **`oracle-db`**: The Oracle database instance for runtime operations.
+
+## Project Structure
+
+The repository is organized to separate the toolchain's infrastructure from your application code.
+
+```
+.
+├── resources/
+│   └── ...           # Third-party dependencies for the Docker build.
+├── tools/
+│   └── test-runner/    # Go-based CLI for automated testing.
+├── tests/
+│   └── bcuota/         # Example test case.
+│       ├── input/      # Input files for this test.
+│       └── expected/   # "Golden Master" expected output.
+└── workspace/
+    ├── src/            # Your COBOL source code (.cbl, .pco).
+    ├── input/          # Input files for manual runs.
+    ├── output/         # Output files from manual runs.
+    └── bin/            # Compiled binaries (.so).
+```
+
+## Prerequisites
 
 - Docker
 - Docker Compose
 - `make` (Optional, for simplified commands)
 
-### 2. Setup
+## Setup
 
-The repository comes pre-packaged with necessary Oracle Instant Client binaries. Simply build the image:
+The repository comes pre-packaged with the necessary Oracle Instant Client binaries. Simply build the Docker image:
 
 ```bash
 make build
-# Or without make: docker-compose build
 ```
 
-## 📂 Workflow Directory
+## Commands
 
-Work primarily takes place in the `workspace/` directory, which is mounted into the container.
+All common tasks are managed via the `Makefile`.
 
-- **`workspace/src/`**: Place your source code here (`.cbl`, `.pco`).
-- **`workspace/input/`**: Place your runtime data files here (e.g., [`bccuota-input`](workspace/input/bcuota-input)).
-- **`workspace/output/`**: Generated reports, logs, and output files appear here after a run.
-- **`workspace/bin/`**: Compiled executable modules (`.so`) are generated here. This folder also acts as a temporary sandbox during execution.
+### Development Workflow
 
-## 🛠️ Usage
+These commands are for your day-to-day compile-and-run loop.
 
-### Compiling Code
+- **Compile All Sources**
+  ```bash
+  make compile
+  ```
+- **Run a Single Module Manually**
+  ```bash
+  make run mod=helloworld
+  ```
 
-To compile **all** source files located in `workspace/src/`:
+### Testing Workflow
 
+This project uses an automated "Golden Master" testing system.
+
+- **Run a Single Test**
+  ```bash
+  make test mod=bcuota
+  ```
+  This command compiles the code, runs the program with the correct test data, and compares the output against the known-good "expected" version.
+
+### Maintenance
+
+- **Clean Artifacts** (removes binaries and output files)
+  ```bash
+  make clean
+  ```
+- **Reset the Database** (**Warning:** This deletes all data)
+  ```bash
+  make db-clean
+  ```
+
+## Tutorial: Adding a New Program
+
+Here’s how to add a new program named `mycalc` and create a test for it.
+
+**1. Write Your Code**
+Create your COBOL source file in `workspace/src/mycalc.cbl`.
+
+**2. Create the Test Case Directory**
+```bash
+mkdir -p tests/mycalc/input
+mkdir -p tests/mycalc/expected
+```
+
+**3. Add Test Input**
+Place any input files your program needs (e.g., `mycalc-input.dat`) inside `tests/mycalc/input/`.
+
+**4. Compile Your Program**
 ```bash
 make compile
-# Or: docker-compose run --rm compiler ./compile.sh
 ```
+Fix any syntax errors that appear.
 
-**What happens?**
+**5. Generate the "Golden Master" Output**
+Run your program once manually to generate the correct, trusted output.
+- First, copy your test input to the manual run directory: `cp tests/mycalc/input/* workspace/input/`
+- Then, run the program: `make run mod=mycalc`
 
-1. The script finds all `.pco` files and precompiles them using Oracle's `procob`.
-2. It gathers all `.cbl` files (including those generated from `.pco`).
-3. It compiles everything into shared object modules (`.so`) using `cobc`.
-4. Artifacts are placed in `workspace/bin/`.
-
-### Running Modules
-
-To execute a compiled module (e.g., `helloworld.so`):
-
+**6. Save the Golden Master**
+Copy the generated output files to your test's `expected` directory.
 ```bash
-make run mod=helloworld
-# Or: docker-compose run --rm runner ./execute.sh helloworld
+cp workspace/output/* tests/mycalc/expected/
 ```
 
-_Note: Do not add the extension `.so` in the command, just the module name._
-
-### Testing Modules
-
-This project uses a "Golden Master" testing approach. Test cases are defined in the `tests/` directory, where each subdirectory contains `input` and `expected` output files.
-
-To run the test case for a specific module:
-
+**7. Run the Automated Test**
+Your test is now set up. You can verify it at any time.
 ```bash
-make test mod=bcuota
+make test mod=mycalc
 ```
-
-**What happens?**
-1. The Go test runner compiles the latest code.
-2. It copies the test's input files into the workspace.
-3. It runs the module inside the Docker container.
-4. It compares the generated output against the "expected" golden master files.
-5. The command will exit with a success or failure code.
-
-### Cleaning Up
-
-To remove all compiled binaries and generated output files:
-
-```bash
-make clean
-```
-
-### Resetting the Database
-
-If the database fails to start or gets corrupted, you can completely reset it. **This will delete all data.**
-
-```bash
-make db-clean
-```
-
-## 📏 Conventions
-
-- **File Extensions:**
-  - `.pco`: Oracle Pro\*COBOL source.
-  - `.cbl`: Pure GnuCOBOL source.
-- **Output:**
-  - All compiled binaries are native shared objects (`.so`) compatible with `cobcrun`.
+It should pass. If you change your COBOL code, you can simply run this command to ensure you haven't broken anything.
