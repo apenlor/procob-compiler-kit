@@ -10,6 +10,7 @@ help:
 	@echo "  make build           Build the Docker image"
 	@echo "  make compile         Compile all source files in workspace/src"
 	@echo "  make run mod=NAME    Run a compiled module (e.g., make run mod=helloworld)"
+	@echo "  make test mod=NAME   Run the regression test for a module (e.g., make test mod=bcuota)"
 	@echo "  make shell           Start an interactive shell inside the container"
 	@echo "  make clean           Remove compiled binaries"
 	@echo "  make db-clean        Stop and remove the Oracle DB container and data"
