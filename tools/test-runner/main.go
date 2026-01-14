@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"procob-compiler-kit/tools/test-runner/asserter"
-	"procob-compiler-kit/tools/test-runner/executor"
+	"procob-compiler-kit/tools/test-runner/pkg/assert"
+	"procob-compiler-kit/tools/test-runner/pkg/executor"
 )
 
 const (
@@ -41,24 +41,27 @@ func main() {
 	fmt.Printf("--> Injecting test data for module: %s\n", *mod)
 	copyDirectoryContents(testInput, workspaceInput)
 
+	// Define project root relative to the main.go file
+	projectRoot := "../.."
+
 	// 4. Compile: Run make compile
 	fmt.Println("--> Compiling sources...")
-	if err := executor.Run("make", "compile"); err != nil {
-		fmt.Printf("Error during compilation: %v\n", err)
+	if out, err := executor.RunCommand(projectRoot, "make", "compile"); err != nil {
+		fmt.Printf("Error during compilation:\n%s\n", out)
 		os.Exit(1)
 	}
 
 	// 5. Run: Run make run mod=<mod>
 	fmt.Printf("--> Running test for module: %s\n", *mod)
 	runArg := fmt.Sprintf("mod=%s", *mod)
-	if err := executor.Run("make", "run", runArg); err != nil {
-		fmt.Printf("Error during test execution: %v\n", err)
+	if out, err := executor.RunCommand(projectRoot, "make", "run", runArg); err != nil {
+		fmt.Printf("Error during test execution:\n%s\n", out)
 		os.Exit(1)
 	}
 
 	// 6. Verify: Call assert.CompareDirs(workspace/output, tests/<mod>/expected)
 	fmt.Println("--> Verifying output...")
-	if err := asserter.CompareDirs(workspaceOutput, testExpected); err != nil {
+	if err := assert.CompareDirs(workspaceOutput, testExpected); err != nil {
 		fmt.Printf("Verification failed: %v\n", err)
 		os.Exit(1)
 	}

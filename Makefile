@@ -1,7 +1,7 @@
 .PHONY: build compile run shell clean help test
 
 test:
-	@go run tools/test-runner/main.go --mod $(mod)
+	@cd tools/test-runner && go run . --mod $(mod)
 
 
 # Default target
