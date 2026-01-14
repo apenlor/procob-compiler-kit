@@ -8,6 +8,7 @@ Thumbs.db
 .idea/
 
 # Build Artifacts (Binaries)
+/tools/test-runner/test-runner
 workspace/bin/*
 !workspace/bin/.gitkeep
 workspace/output/*
