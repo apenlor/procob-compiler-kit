@@ -1,4 +1,7 @@
-.PHONY: build compile run shell clean help test
+.PHONY: build compile run shell clean help test golden-master
+
+golden-master:
+	@cd tools/test-runner && go run . --mod $(mod) --generate
 
 test:
 	@cd tools/test-runner && go run . --mod $(mod)
@@ -11,6 +14,7 @@ help:
 	@echo "  make compile         Compile all source files in workspace/src"
 	@echo "  make run mod=NAME    Run a compiled module (e.g., make run mod=helloworld)"
 	@echo "  make test mod=NAME   Run the regression test for a module (e.g., make test mod=bcuota)"
+	@echo "  make golden-master mod=NAME Regenerate the golden master files for a test"
 	@echo "  make shell           Start an interactive shell inside the container"
 	@echo "  make clean           Remove compiled binaries"
 	@echo "  make db-clean        Stop and remove the Oracle DB container and data"

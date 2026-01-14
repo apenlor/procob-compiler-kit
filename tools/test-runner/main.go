@@ -19,6 +19,7 @@ const (
 func main() {
 	// Step 1: Parse Flags
 	mod := flag.String("mod", "", "The name of the test module to run (required)")
+	generate := flag.Bool("generate", false, "Generate golden master files instead of testing")
 	flag.Parse()
 
 	// 1. Validate mod arg
@@ -73,14 +74,37 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 6. Verify: Call assert.CompareDirs(workspace/output, tests/<mod>/expected)
-	fmt.Println("--> Verifying output...")
-	if err := assert.CompareDirs(workspaceOutput, testExpected); err != nil {
-		fmt.Printf("Verification failed: %v\n", err)
-		os.Exit(1)
+	// 6. Verify or Generate Golden Master
+	if *generate {
+		// Generation Mode
+		fmt.Println("--> Generating golden master files...")
+
+		// Safety check: ensure input directory exists
+		if _, err := os.Stat(testInput); os.IsNotExist(err) {
+			fmt.Printf("Error: Input directory not found at %s\n", testInput)
+			fmt.Println("Please create it and add test input files before generating a golden master.")
+			os.Exit(1)
+		}
+
+		// Clean the expected directory and copy the new output
+		if err := fsops.CleanDir(testExpected); err != nil {
+			fmt.Printf("Error cleaning expected directory: %v\n", err)
+			os.Exit(1)
+		}
+		if err := fsops.CopyDir(workspaceOutput, testExpected); err != nil {
+			fmt.Printf("Error copying golden master files: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("--> Golden master for module '%s' generated successfully!\n", *mod)
+	} else {
+		// Verification Mode
+		fmt.Println("--> Verifying output...")
+		if err := assert.CompareDirs(workspaceOutput, testExpected); err != nil {
+			fmt.Printf("Verification failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("--> Test run successful!")
 	}
 
-	// 7. Report: Exit 0 on success
-	fmt.Println("--> Test run successful!")
 	os.Exit(0)
 }
