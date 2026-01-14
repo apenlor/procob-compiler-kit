@@ -1,6 +1,7 @@
 package fsops
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -8,6 +9,10 @@ import (
 
 // CleanDir removes all contents of the directory at path, but leaves the directory itself.
 func CleanDir(path string) error {
+	if path == "" || path == "." || path == "/" {
+		return errors.New("path cannot be root, empty, or dot")
+	}
+
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return err

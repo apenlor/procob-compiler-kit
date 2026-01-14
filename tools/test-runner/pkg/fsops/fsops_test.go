@@ -109,3 +109,53 @@ func TestCopyDir(t *testing.T) {
 		t.Errorf("Nested content mismatch: expected %q, got %q", nestedContent, readNested)
 	}
 }
+
+func TestCleanDir_Safety(t *testing.T) {
+	// Test safety checks for dangerous paths
+
+	// Case 1: Empty string
+	if err := CleanDir(""); err == nil {
+		t.Error("CleanDir(\"\") should return error, got nil")
+	}
+
+	// Case 2: Dot (.)
+	// We run this in a safe context (temp dir) just in case,
+	// but we expect it to fail validation regardless of context.
+	func() {
+		// Create safe temp dir
+		tempDir, err := os.MkdirTemp("", "fsops_safety")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Save current dir
+		wd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Failed to get wd: %v", err)
+		}
+		// Restore wd at end of block
+		defer func() {
+			if err := os.Chdir(wd); err != nil {
+				t.Errorf("Failed to restore wd: %v", err)
+			}
+		}()
+
+		// Chdir to temp dir
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to chdir: %v", err)
+		}
+
+		// Run CleanDir(".")
+		// Current implementation: Should succeed (return nil) and clean dir (harmless)
+		// Desired implementation: Should return error
+		if err := CleanDir("."); err == nil {
+			t.Error("CleanDir(\".\") should return error, got nil")
+		}
+	}()
+
+	// Case 3: Root (/)
+	// We DO NOT execute this because it is too dangerous to test "live"
+	// against an implementation that might lack the check.
+	// We rely on the implementation of "." and "" checks to cover the logic pattern.
+}
