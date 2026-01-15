@@ -21,7 +21,7 @@ WORKDIR /opt/oracle
 COPY resources/oracle/instantclient-basiclite-linuxx64.zip .
 RUN unzip -o '*.zip' && \
     rm -- *.zip && \
-    mv -- instantclient* instantclient
+    ln -s instantclient_* instantclient
 
 # Configure runtime environment
 ENV ORACLE_HOME=/opt/oracle/instantclient
@@ -63,11 +63,17 @@ RUN tar -xf gnucobol-3.2.tar.xz && \
 # ==============================================================================
 FROM builder AS compiler
 
+# Create symlink for libaio, required by Oracle Precompiler (procob)
+RUN ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/libaio.so.1
+
 # Install Oracle SDK and Precompiler development tools
 WORKDIR /opt/oracle
 COPY resources/oracle/instantclient-sdk-linuxx64.zip .
 COPY resources/oracle/instantclient-precomp-linux.x64-23.26.0.0.0.zip .
 RUN unzip -o '*.zip' && rm -- *.zip
+
+# Add SDK to PATH for procob
+ENV PATH=$ORACLE_HOME/sdk:$PATH
 
 # Set final WORKDIR and CMD
 WORKDIR /app

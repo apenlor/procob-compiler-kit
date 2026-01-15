@@ -1,0 +1,73 @@
+      *****************************************************************
+      * 
+      *****************************************************************
+
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. getinterest.
+       ENVIRONMENT DIVISION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+
+           EXEC SQL BEGIN DECLARE SECTION END-EXEC.
+       01  EURIBOR.    
+           05  YEAR              PIC 9(04).
+           05  MONTH             PIC 9(02).
+           05  INT-RATE          PIC 9(01)V9(3).
+  
+       01  D-DATE    PIC X(10).       
+           EXEC SQL END DECLARE SECTION END-EXEC.
+
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+
+       01  WS-DATE.
+           05 WS-DATE-DAY   PIC 9(02).
+           05 FILLER        PIC X(1).
+           05 WS-DATE-MONTH PIC 9(02).
+           05 FILLER        PIC X(1).
+           05 WS-DATE-YEAR  PIC 9(04).
+
+       LINKAGE SECTION.
+       01 INT-PARAMS.
+           05 INT-DATE          PIC X(10). 
+           05 INT-EURIBOR       PIC 9(1)V9(3) USAGE IS DISPLAY.
+
+       PROCEDURE DIVISION USING INT-PARAMS.
+
+           EXEC SQL WHENEVER SQLERROR
+               DO PERFORM SQL-ERROR END-EXEC.
+
+
+           EXEC SQL
+                SELECT TO_CHAR(SYSTIMESTAMP, 'DD-MM-YYYY') 
+                INTO :D-DATE
+                FROM DUAL
+           END-EXEC.   
+
+           MOVE D-DATE TO INT-DATE.
+
+      *           * 
+      *    SELECT EURIBOR
+      * 
+           MOVE D-DATE TO WS-DATE.
+           MOVE WS-DATE-YEAR TO YEAR.
+           MOVE WS-DATE-MONTH TO MONTH.
+           SUBTRACT 1 FROM MONTH.
+
+           EXEC SQL 
+               SELECT INT_RATE INTO :INT-RATE
+               FROM EURIBOR
+               WHERE YEAR = :YEAR
+               AND MONTH = :MONTH
+           END-EXEC.   
+ 
+           MOVE INT-RATE TO INT-EURIBOR.
+
+           GOBACK.
+    
+       SQL-ERROR.
+           EXEC SQL WHENEVER SQLERROR CONTINUE END-EXEC.
+           DISPLAY " ".
+           DISPLAY "ORACLE ERROR DETECTED:".
+           DISPLAY " ".
+           DISPLAY SQLERRMC.
+           GOBACK.
