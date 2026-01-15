@@ -71,17 +71,25 @@ if [ ${#pco_files[@]} -gt 0 ]; then
     done
 fi
 
-# 2. GnuCOBOL Compilation (Batch)
+# 2. GnuCOBOL Compilation (Sequential)
 cbl_files=($(find . -type f -name "*.cbl"))
 
 if [ ${#cbl_files[@]} -gt 0 ]; then
-    log_step "Compiling GnuCOBOL sources..."
-    echo -e "    ➜ Sources: ${BOLD}${cbl_files[*]}${RESET}"
+    log_step "Compiling GnuCOBOL sources sequentially..."
     
-    # Run cobc in batch mode
-    cobc $COBC_FLAGS $ORACLE_FLAGS $copybook_flags "${cbl_files[@]}"
+    all_ok=true
+    for f in "${cbl_files[@]}"; do
+        echo -e "    ➜ Compiling ${BOLD}$f${RESET}"
+        cobc $COBC_FLAGS $ORACLE_FLAGS $copybook_flags "$f"
+        
+        if [ $? -ne 0 ]; then
+            log_error "Compilation failed for $f"
+            all_ok=false
+            break
+        fi
+    done
 
-    if [ $? -eq 0 ]; then
+    if [ "$all_ok" = true ]; then
         # Move generated modules (.so) to bin directory
         mv -f -- *.so ../bin/ 2>/dev/null
         
