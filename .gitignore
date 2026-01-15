@@ -23,3 +23,5 @@ workspace/input/*
 *.int
 *.i
 *.log
+core
+

@@ -18,7 +18,7 @@ mkdir -p bin
 
 # Oracle Instant Client configuration
 ORACLE_FLAGS="-L$ORACLE_HOME -lclntsh"
-COBC_FLAGS="-m -fbinary-byteorder=native -fbinary-size=2-4-8"
+COBC_FLAGS="-O0 -m -fbinary-byteorder=native -fbinary-size=2-4-8"
 
 log_info "Starting build process..."
 
@@ -30,7 +30,7 @@ generated_files=()
 
 # 1. Oracle Pro*COBOL Precompilation
 shopt -s nullglob
-pco_files=(*.pco)
+pco_files=($(find . -type f -name "*.pco"))
 
 if [ ${#pco_files[@]} -gt 0 ]; then
     log_step "Precompiling Oracle Pro*COBOL sources..."
@@ -54,7 +54,7 @@ if [ ${#pco_files[@]} -gt 0 ]; then
 fi
 
 # 2. GnuCOBOL Compilation (Batch)
-cbl_files=(*.cbl)
+cbl_files=($(find . -type f -name "*.cbl"))
 
 if [ ${#cbl_files[@]} -gt 0 ]; then
     log_step "Compiling GnuCOBOL sources..."
