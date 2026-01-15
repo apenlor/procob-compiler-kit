@@ -45,6 +45,8 @@ services:
       - "1521:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
+      # Mount custom setup scripts to be executed on database creation
+      - ./resources/oracle/setup:/opt/oracle/scripts/startup
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/1521' || exit 1"]
       interval: 10s

@@ -6,6 +6,7 @@ A turnkey environment for compiling and running GnuCOBOL applications with full 
 
 ## Table of Contents
 
+- [Quick Reference](#quick-reference)
 - [Core Concepts](#core-concepts)
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
@@ -15,6 +16,33 @@ A turnkey environment for compiling and running GnuCOBOL applications with full 
   - [Testing Workflow](#testing-workflow)
   - [Maintenance](#maintenance)
 - [Tutorial: Adding a New Program](#tutorial-adding-a-new-program)
+- [Database Connection Details](#database-connection-details)
+
+## Quick Reference
+
+### Key Commands
+
+| Command | Description |
+| :--- | :--- |
+| `make build` | Build the Docker infrastructure. |
+| `make compile` | Compile all COBOL sources. |
+| `make run mod=NAME` | Run a compiled module manually. |
+| `make test mod=NAME` | Run an automated regression test. |
+| `make golden-master mod=NAME` | Regenerate a test's golden master files. |
+| `make shell` | Start an interactive shell in the runner. |
+| `make db-clean` | Destroy the database and its data volume. |
+
+### Database Connection
+
+| Parameter | Value |
+| :--- | :--- |
+| **Host** | `localhost` |
+| **Port** | `1521` |
+| **SID** | `FREEPDB1` |
+| **Username** | `procob` |
+| **Password** | `procob` |
+
+*For detailed connection instructions for GUI vs. CLI clients, see the [Database Connection Details](#database-connection-details) section.*
 
 ## Core Concepts
 
@@ -206,8 +234,62 @@ Your new test is now live.
 
 - **Run the Test**:
 
-  ```bash
-  make test mod=mycalc
-  ```
+```bash
+make test mod=mycalc
+```
 
 - **Iterate**: Continue modifying your code. If you intentionally change the output, just run `make golden-master mod=mycalc` again to bless the new version.
+
+## Database Connection Details
+
+The Oracle database is configured with a dedicated user for the application.
+
+- **Host (from local machine):** `localhost`
+- **Port:** `1521`
+- **Pluggable Database (SID):** `FREEPDB1`
+- **Username:** `procob`
+- **Password:** `procob`
+
+### Connecting with a GUI Client (DBeaver, etc.)
+
+For GUI-based tools running on your local machine, use the connection details above.
+
+When running queries, execute only the standard SQL statements. Client-specific commands used by command-line tools (like `SET`, `COLUMN`, `EXIT`) will cause errors and should be omitted.
+
+**Example Query:**
+
+```sql
+SELECT * FROM EURIBOR ORDER BY YEAR, MONTH;
+```
+
+### Connecting with SQL\*Plus (CLI inside container)
+
+For advanced debugging, you can connect using Oracle's command-line client from within the `runner` container.
+
+1.  **Open a shell in the container:**
+
+    ```bash
+    make shell
+    ```
+
+2.  **Connect using the service name:**
+    The service name `oracle-db` is used for internal container-to-container communication.
+
+    ```bash
+    sqlplus procob/procob@//oracle-db:1521/FREEPDB1
+    ```
+
+3.  **Run a Script:**
+    The following example script includes SQL*Plus specific commands for formatting (`SET`, `COLUMN`) and to terminate the session (`EXIT`). These are ignored by GUI clients but are necessary for scripting with SQL*Plus.
+
+    ```sql
+    -- Filename: query.sql
+    SET LINESIZE 100
+    COLUMN YEAR FORMAT 9999
+    COLUMN MONTH FORMAT 99
+    COLUMN INT_RATE FORMAT 9.999
+
+    SELECT * FROM EURIBOR ORDER BY YEAR, MONTH;
+
+    EXIT;
+    ```
