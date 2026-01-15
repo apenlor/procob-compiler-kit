@@ -28,6 +28,24 @@ cd src || { log_error "Source directory 'src' not found"; exit 1; }
 # List to track generated .cbl files for cleanup
 generated_files=()
 
+# --- Auto-detect Copybook Paths ---
+# Find all unique directories containing .cpy files
+shopt -s globstar
+copybook_dirs=($(find . -name '*.cpy' -exec dirname {} \; | sort -u))
+copybook_flags=""
+procob_copybook_flags=""
+
+if [ ${#copybook_dirs[@]} -gt 0 ]; then
+    log_info "Found copybook directories:"
+    for dir in "${copybook_dirs[@]}"; do
+        echo "    - $dir"
+        copybook_flags+=" -I $dir"
+        # For procob, the syntax is 'include=path'
+        procob_copybook_flags+=" include=$dir"
+    done
+fi
+
+
 # 1. Oracle Pro*COBOL Precompilation
 shopt -s nullglob
 pco_files=($(find . -type f -name "*.pco"))
@@ -42,7 +60,7 @@ if [ ${#pco_files[@]} -gt 0 ]; then
         echo -e "    ➜ ${BOLD}$f${RESET} -> $generated_cbl"
 
         # iname=input, oname=output
-        procob iname="$f" oname="$generated_cbl" > /dev/null
+        procob iname="$f" oname="$generated_cbl" $procob_copybook_flags > /dev/null
 
         if [ $? -eq 0 ]; then
             generated_files+=("$generated_cbl")
@@ -61,7 +79,7 @@ if [ ${#cbl_files[@]} -gt 0 ]; then
     echo -e "    ➜ Sources: ${BOLD}${cbl_files[*]}${RESET}"
     
     # Run cobc in batch mode
-    cobc $COBC_FLAGS $ORACLE_FLAGS "${cbl_files[@]}"
+    cobc $COBC_FLAGS $ORACLE_FLAGS $copybook_flags "${cbl_files[@]}"
 
     if [ $? -eq 0 ]; then
         # Move generated modules (.so) to bin directory
