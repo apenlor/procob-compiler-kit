@@ -16,99 +16,126 @@ const (
 	TestRoot      = "../../tests"
 )
 
+// validateSource ensures that exactly one source file (.cbl or .pco) exists for the given module.
+func validateSource(moduleName string) error {
+	srcRoot := filepath.Join(WorkspaceRoot, "src")
+	cblFile := moduleName + ".cbl"
+	pcoFile := moduleName + ".pco"
+
+	cblMatches, err := fsops.FindFile(srcRoot, cblFile)
+	if err != nil {
+		return fmt.Errorf("error searching for .cbl file: %w", err)
+	}
+
+	pcoMatches, err := fsops.FindFile(srcRoot, pcoFile)
+	if err != nil {
+		return fmt.Errorf("error searching for .pco file: %w", err)
+	}
+
+	totalMatches := len(cblMatches) + len(pcoMatches)
+
+	if totalMatches == 0 {
+		return fmt.Errorf("source file '%s' or '%s' not found in %s", cblFile, pcoFile, srcRoot)
+	}
+	if totalMatches > 1 {
+		return fmt.Errorf("ambiguous module name; found multiple source files for '%s'", moduleName)
+	}
+	return nil
+}
+
 func main() {
 	// Step 1: Parse Flags
 	mod := flag.String("mod", "", "The name of the test module to run (required)")
 	generate := flag.Bool("generate", false, "Generate golden master files instead of testing")
 	flag.Parse()
 
-	// 1. Validate mod arg
 	if *mod == "" {
 		fmt.Println("Error: --mod flag is required")
-		return
+		os.Exit(1)
+	}
+
+	// Step 2: Validate that the source code for the module exists
+	if err := validateSource(*mod); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Define paths
 	workspaceInput := filepath.Join(WorkspaceRoot, "input")
 	workspaceOutput := filepath.Join(WorkspaceRoot, "output")
-	testInput := filepath.Join(TestRoot, *mod, "input")
-	testExpected := filepath.Join(TestRoot, *mod, "expected")
+	testDir := filepath.Join(TestRoot, *mod)
+	testInput := filepath.Join(testDir, "input")
+	testExpected := filepath.Join(testDir, "expected")
+
+	// Step 3: Handle Golden Master generation for new tests
+	isNewTest := false
+	if *generate {
+		if _, err := os.Stat(testDir); os.IsNotExist(err) {
+			isNewTest = true
+			fmt.Printf("--> New test detected for module '%s'. Creating test suite...\n", *mod)
+			os.MkdirAll(testInput, 0755)
+			os.MkdirAll(testExpected, 0755)
+
+			fmt.Printf("--> Snapshotting workspace/input to %s\n", testInput)
+			if err := fsops.CopyDir(workspaceInput, testInput); err != nil {
+				fmt.Printf("Error snapshotting input data: %v\n", err)
+				os.Exit(1)
+			}
+		}
+	}
 
 	// Defer cleanup to ensure it runs at the end
 	defer func() {
-		fmt.Println("--> Cleaning up workspace...")
-		fsops.CleanDir(workspaceInput)
-		fsops.CleanDir(workspaceOutput)
+		if !isNewTest { // Don't clean if we just snapshotted, user might want to inspect
+			fmt.Println("--> Cleaning up workspace...")
+			fsops.CleanDir(workspaceInput)
+			fsops.CleanDir(workspaceOutput)
+		}
 	}()
 
-	// 2. Clean workspace/input and workspace/output
+	// Step 4: Prepare workspace by cleaning and injecting test data
 	fmt.Println("--> Cleaning workspace...")
-	if err := fsops.CleanDir(workspaceInput); err != nil {
-		fmt.Printf("Error cleaning directory %s: %v\n", workspaceInput, err)
-		return
-	}
-	if err := fsops.CleanDir(workspaceOutput); err != nil {
-		fmt.Printf("Error cleaning directory %s: %v\n", workspaceOutput, err)
-		return
-	}
+	fsops.CleanDir(workspaceInput)
+	fsops.CleanDir(workspaceOutput)
 
-	// 3. Inject: Copy tests/<mod>/input/* to workspace/input/
 	fmt.Printf("--> Injecting test data for module: %s\n", *mod)
 	if err := fsops.CopyDir(testInput, workspaceInput); err != nil {
-		// It's okay if a test has no input files
 		if !os.IsNotExist(err) {
 			fmt.Printf("Error copying test data: %v\n", err)
-			return
+			os.Exit(1)
 		}
 		fmt.Println("No input directory for module, skipping copy.")
 	}
 
-	// Define project root relative to the main.go file
+	// Step 5: Compile & Run
 	projectRoot := "../.."
-
-	// 4. Compile: Run make compile
 	fmt.Println("--> Compiling sources...")
 	if out, err := executor.RunCommand(projectRoot, "make", "compile"); err != nil {
 		fmt.Printf("Error during compilation:\n%s\n", out)
-		return
+		os.Exit(1)
 	}
 
-	// 5. Run: Run make run mod=<mod>
 	fmt.Printf("--> Running test for module: %s\n", *mod)
 	runArg := fmt.Sprintf("mod=%s", *mod)
 	if out, err := executor.RunCommand(projectRoot, "make", "run", runArg); err != nil {
 		fmt.Printf("Error during test execution:\n%s\n", out)
-		return
+		os.Exit(1)
 	}
 
-	// 6. Verify or Generate Golden Master
+	// Step 6: Verify or Generate Golden Master
 	if *generate {
-		// Generation Mode
 		fmt.Println("--> Generating golden master files...")
-
-		// Safety check: ensure input directory exists
-		if _, err := os.Stat(testInput); os.IsNotExist(err) {
-			fmt.Printf("Error: Input directory not found at %s\n", testInput)
-			fmt.Println("Please create it and add test input files before generating a golden master.")
-			return // Exit without success
-		}
-
-		// Clean the expected directory and copy the new output
-		if err := fsops.CleanDir(testExpected); err != nil {
-			fmt.Printf("Error cleaning expected directory: %v\n", err)
-			return // Exit without success
-		}
+		fsops.CleanDir(testExpected)
 		if err := fsops.CopyDir(workspaceOutput, testExpected); err != nil {
 			fmt.Printf("Error copying golden master files: %v\n", err)
-			return // Exit without success
+			os.Exit(1)
 		}
 		fmt.Printf("--> Golden master for module '%s' generated successfully!\n", *mod)
 	} else {
-		// Verification Mode
 		fmt.Println("--> Verifying output...")
 		if err := assert.CompareDirs(workspaceOutput, testExpected); err != nil {
 			fmt.Printf("Verification failed: %v\n", err)
-			return // Exit without success
+			os.Exit(1)
 		}
 		fmt.Println("--> Test run successful!")
 	}

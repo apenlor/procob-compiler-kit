@@ -81,3 +81,18 @@ func copyFile(src, dst string) error {
 	}
 	return os.Chmod(dst, info.Mode())
 }
+
+// FindFile searches for a file with a specific name within a directory tree.
+func FindFile(root, fileName string) ([]string, error) {
+	var files []string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && info.Name() == fileName {
+			files = append(files, path)
+		}
+		return nil
+	})
+	return files, err
+}

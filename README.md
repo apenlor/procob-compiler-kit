@@ -26,12 +26,19 @@ The system is composed of three services managed by Docker Compose:
 +----------+       +---------+       +------------+
 | compiler | ----> | runner  | ----> | oracle-db  |
 +----------+       +---------+       +------------+
-(No DB Link)    (Executes Code)     (Database)
+   (No DB Link)    (Executes Code)     (Database)
 ```
 
 - **`compiler`**: A lightweight container that compiles your source code without needing a database connection.
 - **`runner`**: An identical container that executes your compiled code and has a direct link to the database.
 - **`oracle-db`**: The Oracle database instance for runtime operations.
+
+### COBOL Copybooks
+
+The build system automatically detects and includes COBOL Copybooks (`.cpy` files).
+
+- **Location**: Place your `.cpy` files in any subdirectory within `workspace/src/`. The compiler will automatically find them.
+- **Usage**: Use the standard `COPY` statement in your COBOL programs (e.g., `COPY "my-copybook.cpy".`).
 
 ## Project Structure
 
@@ -40,19 +47,25 @@ The repository is organized to separate the toolchain's infrastructure from your
 ```
 .
 ├── resources/
-│   └── ...           # Third-party dependencies for the Docker build.
+│   └── ...             # Third-party dependencies for the Docker build.
 ├── tools/
 │   └── test-runner/    # Go-based CLI for automated testing.
 ├── tests/
-│   └── bcuota/         # Example test case.
-│       ├── input/      # Input files for this test.
-│       └── expected/   # "Golden Master" expected output.
+│   ├── bcuota/               # Test case for bcuota module.
+│   ├── bcuota-with-copybook/ # Test case with copybook dependency.
+│   └── helloworld/           # Simple test case.
 └── workspace/
-    ├── src/            # Your COBOL source code (.cbl, .pco).
+    ├── src/
+    │   ├── bcuota/               # Source code for bcuota module.
+    │   ├── bcuota-with-copybook/ # Source code using copybooks.
+    │   ├── helloworld/           # Source code for helloworld module.
+    │   └── ...
     ├── input/          # Input files for manual runs.
     ├── output/         # Output files from manual runs.
     └── bin/            # Compiled binaries (.so).
 ```
+
+While the compiler does not enforce a strict structure within `workspace/src/`, the convention is to organize each program and its related files into its own subdirectory (e.g., `workspace/src/mycalc/`).
 
 ## Prerequisites
 
@@ -120,6 +133,8 @@ This project uses an automated "Golden Master" testing system, which is the pref
 
   This command runs the program just like a test, but instead of comparing the output, it deletes the old `expected` files and saves the new output as the golden master for future tests.
 
+  If the test suite does not yet exist, this command will automatically create it for you.
+
 ### Maintenance
 
 These commands help you manage the project's state, especially when troubleshooting.
@@ -152,49 +167,47 @@ These commands help you manage the project's state, especially when troubleshoot
 
 ## Tutorial: Adding a New Program
 
-This tutorial walks through the full Test-Driven Development (TDD) cycle for adding a new program named `mycalc`.
+This tutorial walks through the modern, streamlined workflow for adding a new program named `mycalc`.
 
-- **Step 1: Write Your Code**
+### Step 1: Write and Verify Your Program
 
-Create your COBOL source file at `workspace/src/mycalc.cbl`. You can start with a simple "Hello World" program.
+The first step is to get your program working manually.
 
-- **Step 2: Create the Test Structure**
-
-Every program needs a test case directory. Create the standard `input` and `expected` folders for your new program.
-
-```bash
-mkdir -p tests/mycalc/input tests/mycalc/expected
-```
-
-- **Step 3: Define Test Input**
-
-Place any input files your program needs (e.g., `mycalc-input.dat`) inside `tests/mycalc/input/`. If your program doesn't need input files, create an empty `.gitkeep` file so Git tracks the directory:
+1.  **Write Your Code**: Create your source files (e.g., `mycalc.cbl`) inside a new directory at `workspace/src/mycalc/`.
+2.  **Add Input Files (If Needed)**: Place any necessary input data directly into the `workspace/input/` directory.
+3.  **Compile and Run**: Use the manual `compile` and `run` commands until you are satisfied with the output generated in `workspace/output/`.
 
 ```bash
-touch tests/mycalc/input/.gitkeep
+# First, compile everything
+make compile
+
+# Now, run your new module repeatedly until it works
+make run mod=mycalc
 ```
 
-- **Step 4: Generate the Golden Master**
+### Step 2: Create the Test Suite
 
-Run the automated generator command. This will compile your code, run it with the test inputs, and save the result as the official "correct" output.
+Once your program is working correctly, use the `golden-master` command to create the test suite and capture its state.
 
 ```bash
 make golden-master mod=mycalc
 ```
 
-At this point, you should inspect the files generated in `tests/mycalc/expected/` to ensure they are correct. If your program produces no output files, this directory should contain only an empty `.gitkeep` file.
+This single command does the following:
 
-- **Step 5: Run the Test**
+- **Validates**: It checks that `mycalc.cbl` or `mycalc.pco` exists.
+- **Creates Test Suite**: It creates the `tests/mycalc/`, `tests/mycalc/input/`, and `tests/mycalc/expected/` directories.
+- **Snapshots Input**: It copies all files from `workspace/input/` into `tests/mycalc/input/` to be used as the test's input data.
+- **Generates Golden Master**: It runs the program and saves the resulting files from `workspace/output/` into `tests/mycalc/expected/` as the official "correct" output.
 
-With the golden master in place, your test is now live. Run it to confirm everything passes.
+### Step 3: Run the Test and Iterate
 
-```bash
-make test mod=mycalc
-```
+Your new test is now live.
 
-- **Step 6: Develop and Iterate**
+- **Run the Test**:
 
-Now, you can continue to modify your code in `workspace/src/mycalc.cbl`. After every change, run `make test mod=mycalc`.
+  ```bash
+  make test mod=mycalc
+  ```
 
-- If the test fails, you've introduced a regression.
-- If you intentionally change the output, the test will fail. Simply run `make golden-master mod=mycalc` again to "bless" the new output as the correct version.
+- **Iterate**: Continue modifying your code. If you intentionally change the output, just run `make golden-master mod=mycalc` again to bless the new version.
